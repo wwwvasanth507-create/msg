@@ -100,4 +100,63 @@ function joinRoom() {
         console.log("You are host");
     });
 
-    peer.on("error
+    peer.on("error", err => {
+        if (err.type === "unavailable-id") {
+            joinAsClient(hostId);
+        }
+    });
+
+    peer.on("connection", conn => {
+        connections.push(conn);
+        conn.on("data", data => broadcast(data));
+    });
+}
+
+function joinAsClient(hostId) {
+    peer = new Peer(undefined, {
+        host: "peerjs.com",
+        secure: true,
+        port: 443
+    });
+
+    peer.on("open", () => {
+        hostConn = peer.connect(hostId);
+        hostConn.on("data", data => {
+            showMessage(data.name, data.text, false);
+        });
+    });
+}
+
+function sendMessage() {
+    const text = msg.value.trim();
+    if (!text) return;
+
+    const message = { name: userName, text };
+
+    showMessage(userName, text, true);
+
+    if (isHost) {
+        broadcast(message);
+    } else {
+        hostConn.send(message);
+    }
+
+    msg.value = "";
+}
+
+function broadcast(message) {
+    showMessage(message.name, message.text, false);
+    connections.forEach(c => c.send(message));
+}
+
+function showMessage(name, text, isMe) {
+    const div = document.createElement("div");
+    div.className = "msg " + (isMe ? "me" : "other");
+    div.innerHTML = `<span class="name">${name}:</span> ${text}`;
+    messages.appendChild(div);
+    messages.scrollTop = 999999;
+}
+</script>
+
+</body>
+</html>
