@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>6 Digit Chat Room</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PeerJS -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+#login, #chat {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+}
+input, button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 6px;
+    border: none;
+    font-size: 16px;
+}
+button {
+    background: #22c55e;
+    cursor: pointer;
+}
+#messages {
+    height: 320px;
+    overflow-y: auto;
+    background: #020617;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+.msg {
+    margin-bottom: 6px;
+}
+.me { color: #22c55e; }
+.other { color: #38bdf8; }
+</style>
+</head>
+
+<body>
+
+<div id="login">
+    <h2>🌍 Global Chat</h2>
+    <p>Enter any 6 digit number</p>
+    <input id="room" placeholder="123456" maxlength="6">
+    <button onclick="join()">Join Chat</button>
+</div>
+
+<div id="chat" style="display:none">
+    <h3 id="roomTitle"></h3>
+    <div id="messages"></div>
+    <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter')send()">
+    <button onclick="send()">Send</button>
+</div>
+
+<script>
+let peer;
+let connections = [];
+let roomCode;
+
+function join() {
+    roomCode = document.getElementById("room").value;
+    if (roomCode.length !== 6) {
+        alert("Enter exactly 6 digits");
+        return;
+    }
+
+    document.getElementById("login").style.display = "none";
+    document.getElementById("chat").style.display = "block";
+    document.getElementById("roomTitle").innerText = "Room: " + roomCode;
+
+    peer = new Peer(roomCode + "-" + Math.random().toString(36).slice(2), {
+        host: "peerjs.com",
+        secure: true,
+        port: 443
+    });
+
+    peer.on("open", id => {
+        connectToRoom();
+    });
+
+    peer.on("connection", conn => {
+        connections.push(conn);
+        conn.on("data", data => show(data, "other"));
+    });
+}
+
+function connectToRoom() {
+    peer.listAllPeers(peers => {
+        peers.forEach(pid => {
+            if (pid.startsWith(roomCode) && pid !== peer.id) {
+                let conn = peer.connect(pid);
+                conn.on("open", () => {
+                    connections.push(conn);
+                    conn.on("data", data => show(data, "other"));
+                });
+            }
+        });
+    });
+}
+
+function send() {
+    let input = document.getElementById("msg");
+    let text = input.value.trim();
+    if (!text) return;
+
+    show(text, "me");
+    connections.forEach(c => c.send(text));
+    input.value = "";
+}
+
+function show(text, cls) {
+    let div = document.createElement("div");
+    div.className = "msg " + cls;
+    div.innerText = text;
+    document.getElementById("messages").appendChild(div);
+    document.getElementById("messages").scrollTop = 999999;
+}
+</script>
+
+</body>
+</html>
