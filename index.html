@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>6 Digit Chat Room</title>
+<title>6 Digit Room Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- PeerJS -->
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
 <style>
@@ -19,7 +18,7 @@ body {
     align-items: center;
     height: 100vh;
 }
-#login, #chat {
+.container {
     width: 100%;
     max-width: 420px;
     padding: 20px;
@@ -47,34 +46,49 @@ button {
 .msg {
     margin-bottom: 6px;
 }
-.me { color: #22c55e; }
-.other { color: #38bdf8; }
+.me {
+    color: #22c55e;
+}
+.other {
+    color: #38bdf8;
+}
+.name {
+    font-weight: bold;
+}
 </style>
 </head>
 
 <body>
 
-<div id="login">
-    <h2>🌍 Global Chat</h2>
-    <p>Enter any 6 digit number</p>
-    <input id="room" placeholder="123456" maxlength="6">
-    <button onclick="join()">Join Chat</button>
+<div class="container" id="login">
+    <h2>🌍 Room Chat</h2>
+    <input id="name" placeholder="Your name">
+    <input id="room" placeholder="6 digit room code" maxlength="6">
+    <button onclick="joinRoom()">Join Room</button>
 </div>
 
-<div id="chat" style="display:none">
+<div class="container" id="chat" style="display:none">
     <h3 id="roomTitle"></h3>
     <div id="messages"></div>
-    <input id="msg" placeholder="Type message..." onkeydown="if(event.key==='Enter')send()">
-    <button onclick="send()">Send</button>
+    <input id="msg" placeholder="Type message..." 
+           onkeydown="if(event.key==='Enter')sendMessage()">
+    <button onclick="sendMessage()">Send</button>
 </div>
 
 <script>
 let peer;
 let connections = [];
 let roomCode;
+let userName;
 
-function join() {
-    roomCode = document.getElementById("room").value;
+function joinRoom() {
+    userName = document.getElementById("name").value.trim();
+    roomCode = document.getElementById("room").value.trim();
+
+    if (!userName) {
+        alert("Enter your name");
+        return;
+    }
     if (roomCode.length !== 6) {
         alert("Enter exactly 6 digits");
         return;
@@ -90,13 +104,11 @@ function join() {
         port: 443
     });
 
-    peer.on("open", id => {
-        connectToRoom();
-    });
+    peer.on("open", () => connectToRoom());
 
     peer.on("connection", conn => {
         connections.push(conn);
-        conn.on("data", data => show(data, "other"));
+        conn.on("data", data => showMessage(data.name, data.text, false));
     });
 }
 
@@ -107,27 +119,29 @@ function connectToRoom() {
                 let conn = peer.connect(pid);
                 conn.on("open", () => {
                     connections.push(conn);
-                    conn.on("data", data => show(data, "other"));
+                    conn.on("data", data => showMessage(data.name, data.text, false));
                 });
             }
         });
     });
 }
 
-function send() {
+function sendMessage() {
     let input = document.getElementById("msg");
     let text = input.value.trim();
     if (!text) return;
 
-    show(text, "me");
-    connections.forEach(c => c.send(text));
+    let message = { name: userName, text: text };
+
+    showMessage(userName, text, true);
+    connections.forEach(c => c.send(message));
     input.value = "";
 }
 
-function show(text, cls) {
+function showMessage(name, text, isMe) {
     let div = document.createElement("div");
-    div.className = "msg " + cls;
-    div.innerText = text;
+    div.className = "msg " + (isMe ? "me" : "other");
+    div.innerHTML = `<span class="name">${name}:</span> ${text}`;
     document.getElementById("messages").appendChild(div);
     document.getElementById("messages").scrollTop = 999999;
 }
