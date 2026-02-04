@@ -43,18 +43,10 @@ button {
     border-radius: 6px;
     margin-bottom: 10px;
 }
-.msg {
-    margin-bottom: 6px;
-}
-.me {
-    color: #22c55e;
-}
-.other {
-    color: #38bdf8;
-}
-.name {
-    font-weight: bold;
-}
+.msg { margin-bottom: 6px; }
+.me { color: #22c55e; }
+.other { color: #38bdf8; }
+.name { font-weight: bold; }
 </style>
 </head>
 
@@ -70,7 +62,7 @@ button {
 <div class="container" id="chat" style="display:none">
     <h3 id="roomTitle"></h3>
     <div id="messages"></div>
-    <input id="msg" placeholder="Type message..." 
+    <input id="msg" placeholder="Type message..."
            onkeydown="if(event.key==='Enter')sendMessage()">
     <button onclick="sendMessage()">Send</button>
 </div>
@@ -78,74 +70,34 @@ button {
 <script>
 let peer;
 let connections = [];
-let roomCode;
+let isHost = false;
 let userName;
+let roomCode;
+let hostConn = null;
 
 function joinRoom() {
-    userName = document.getElementById("name").value.trim();
-    roomCode = document.getElementById("room").value.trim();
+    userName = name.value.trim();
+    roomCode = room.value.trim();
 
-    if (!userName) {
-        alert("Enter your name");
-        return;
-    }
-    if (roomCode.length !== 6) {
-        alert("Enter exactly 6 digits");
-        return;
-    }
+    if (!userName) return alert("Enter your name");
+    if (roomCode.length !== 6) return alert("Enter exactly 6 digits");
 
-    document.getElementById("login").style.display = "none";
-    document.getElementById("chat").style.display = "block";
-    document.getElementById("roomTitle").innerText = "Room: " + roomCode;
+    login.style.display = "none";
+    chat.style.display = "block";
+    roomTitle.innerText = "Room: " + roomCode;
 
-    peer = new Peer(roomCode + "-" + Math.random().toString(36).slice(2), {
+    const hostId = "room-" + roomCode;
+
+    // Try to become host
+    peer = new Peer(hostId, {
         host: "peerjs.com",
         secure: true,
         port: 443
     });
 
-    peer.on("open", () => connectToRoom());
-
-    peer.on("connection", conn => {
-        connections.push(conn);
-        conn.on("data", data => showMessage(data.name, data.text, false));
+    peer.on("open", () => {
+        isHost = true;
+        console.log("You are host");
     });
-}
 
-function connectToRoom() {
-    peer.listAllPeers(peers => {
-        peers.forEach(pid => {
-            if (pid.startsWith(roomCode) && pid !== peer.id) {
-                let conn = peer.connect(pid);
-                conn.on("open", () => {
-                    connections.push(conn);
-                    conn.on("data", data => showMessage(data.name, data.text, false));
-                });
-            }
-        });
-    });
-}
-
-function sendMessage() {
-    let input = document.getElementById("msg");
-    let text = input.value.trim();
-    if (!text) return;
-
-    let message = { name: userName, text: text };
-
-    showMessage(userName, text, true);
-    connections.forEach(c => c.send(message));
-    input.value = "";
-}
-
-function showMessage(name, text, isMe) {
-    let div = document.createElement("div");
-    div.className = "msg " + (isMe ? "me" : "other");
-    div.innerHTML = `<span class="name">${name}:</span> ${text}`;
-    document.getElementById("messages").appendChild(div);
-    document.getElementById("messages").scrollTop = 999999;
-}
-</script>
-
-</body>
-</html>
+    peer.on("error
